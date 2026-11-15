@@ -2,3 +2,5 @@
 node_modules/
 *.webm
 *.mp4
+__pycache__/
+*.pyc
