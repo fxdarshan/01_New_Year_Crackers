@@ -2,49 +2,53 @@
  * Cheats: force the next spin, or play a whole scenario.
  *
  *   C          open / close the cheat menu (drawn over the game, never in recordings)
- *   1 - 6      next spin shows NICE, BIG, MEGA*, SUPERB*, SENSATIONAL*, EPIC (Ghost award)
- *   F          next spin triggers free spins (Dance Bear)
- *   S / M / A  Scare Bear large / medium / small
- *   H          Charm Bear          U  upgrade chain      W  Wipe        G  Ghost (100x)
- *   X          single win          N  no win             0  clear forced spins
- *   Symbol win dropdown (in the menu): pick a symbol and 3, 4 or 5 in a row, then Force next spin or Play now.
+ *   F          next spin: 3 Scatters, free spins (random special symbol)
+ *   P          next spin: 3 Scatters, free spins with the Fortune Pig as the special symbol
+ *   4 / 5      4 or 5 Scatters (20x / 200x plus free spins)
+ *   E          free spin: the special symbol expands on 3 reels
+ *   T          free spin: the special symbol on all 5 reels
+ *   R          free spin: retrigger (+10)
+ *   1 / 2 / 3 / 6  NICE / BIG / MEGA / SUPERB win banner (real boards)
+ *   A          2 Scatters with anticipation, no trigger
+ *   X          single line win      M  several lines      W  Scatter as Wild in a win
+ *   N          no win               0  clear forced spins
+ *   Symbol win dropdown (in the menu): pick a symbol and 2-5 in a row, then Force next spin or Play now.
  *   Space      spin
- * (*) MEGA, SUPERB and SENSATIONAL are presentation cheats: a single spin tops out at
- *     about 34x under the rules, so a real big-win board is shown with an amount in
- *     that banner's range. Everything else is a real outcome from the maths engine.
+ * Every cheat is a real outcome from the maths engine. Free spin cheats (E, T, R) used
+ * outside free spins play as a normal spin.
  *
  * Scenario links: ?scenario=<id> or #scenario-<id> loads and plays a scenario on open.
  */
 (function (root) {
   const Game = root.Game, G = Game.G, OUT = root.Director.OUTCOMES;
   const $ = s => document.querySelector(s);
+  const T = (type, extra) => Object.assign({ type }, extra);
 
   const SCENARIOS = [
-    { id: 'all-banners', label: 'All win banners', note: 'NICE, BIG, MEGA*, SUPERB*, SENSATIONAL*, then EPIC through the Ghost award',
-      items: ['nice', 'big', 'b_mega', 'b_superb', 'b_sensational', 'ghost'] },
-    { id: 'free-spins', label: 'Free spins', note: 'Dance Bear trigger, then 7 random free spins',
-      items: ['dance'] },
-    { id: 'free-spins-big', label: 'Free spins: big round', note: 'Trigger, then Charm, large Scare, chain, Wipe, Nice banner, win and Ghost inside free spins',
-      items: ['dance', 'charm', 'scare3', 'chain', 'wipe', 'nice', 'small', 'ghost'] },
-    { id: 'retrigger', label: 'Free spins retrigger', note: 'A Dance Bear during free spins adds 7 more',
-      items: ['dance', 'small', 'dance', 'nowin', 'chain', 'small'] },
-    { id: 'all-bears', label: 'Every bear', note: 'Scare small, medium and large, Charm, then Dance into free spins',
-      items: ['scare', 'scare2', 'scare3', 'charm', 'dance'] },
-    { id: 'wipe-ghost', label: 'Wipe and Ghost', note: 'A wipe of one value, then 15 Yellows becoming Ghosts (100×)',
-      items: ['wipe', 'ghost'] },
-    { id: 'max-win', label: 'Max win cap (390×)', note: 'Free spins with repeated Ghost awards until the 390× cap ends the round',
-      items: ['dance', 'ghost', 'ghost', 'ghost'] },
-    { id: 'base-tour', label: 'Base game tour', note: 'No win, win, chain, Scare, Charm, Nice and Big banners, Wipe',
-      items: ['nowin', 'small', 'chain', 'scare', 'charm', 'nice', 'big', 'wipe'] }
+    { id: 'free-spins', label: 'Free spins', note: '3 Scatters, the special symbol pick, then 10 random free spins',
+      items: [T('trigger')] },
+    { id: 'pig-free-spins', label: 'Free spins: Fortune Pig expands', note: 'Fortune Pig as the special symbol; it expands on 3 reels, then on all 5',
+      items: [T('trigger', { special: 0 }), T('expand'), T('random'), T('expand5')] },
+    { id: 'expansions', label: 'Every expansion size', note: 'Lion Dance special: expands on 2, 3 and 5 reels, with a retrigger',
+      items: [T('trigger', { special: 1 }), T('expand2'), T('expand'), T('retrigger'), T('expand5')] },
+    { id: 'retrigger', label: 'Free spins retrigger', note: '3 Scatters during free spins add 10 more',
+      items: [T('trigger'), T('random'), T('retrigger'), T('expand')] },
+    { id: 'all-banners', label: 'All win banners', note: 'NICE, BIG, MEGA and SUPERB from real boards, then 5 Scatters (200x)',
+      items: [T('nice'), T('big'), T('mega'), T('superb'), T('trigger5')] },
+    { id: 'max-win', label: 'Max win cap (5,500×)', note: 'Fortune Pig special on all 5 reels on every free spin until the cap ends the round',
+      items: [T('trigger', { special: 0 }), T('expand5'), T('expand5'), T('expand5'), T('expand5')] },
+    { id: 'base-tour', label: 'Base game tour', note: 'No win, line win, several lines, Scatter as Wild, 2-Scatter tease, Big banner',
+      items: [T('nowin'), T('small'), T('multi'), T('wildwin'), T('tease'), T('big')] }
   ];
 
-  // key, outcome type, short label for the menu
+  // key, outcome item, short label for the menu
   const HOTKEYS = [
-    ['1', 'nice', 'NICE banner'], ['2', 'big', 'BIG banner'], ['3', 'b_mega', 'MEGA banner*'],
-    ['4', 'b_superb', 'SUPERB banner*'], ['5', 'b_sensational', 'SENSATIONAL banner*'], ['6', 'ghost', 'EPIC (Ghost 100×)'],
-    ['F', 'dance', 'Free spins'], ['S', 'scare3', 'Scare Bear, large'], ['M', 'scare2', 'Scare Bear, medium'],
-    ['A', 'scare', 'Scare Bear, small'], ['H', 'charm', 'Charm Bear'], ['U', 'chain', 'Upgrade chain'],
-    ['W', 'wipe', 'Wipe'], ['G', 'ghost', 'Ghost (100×)'], ['X', 'small', 'Single win'], ['N', 'nowin', 'No win']
+    ['F', T('trigger'), 'Free spins'], ['P', T('trigger', { special: 0 }), 'Free spins, Pig special'],
+    ['4', T('trigger4'), '4 Scatters'], ['5', T('trigger5'), '5 Scatters'],
+    ['E', T('expand'), 'Expand (3 reels)'], ['T', T('expand5'), 'Expand (5 reels)'], ['R', T('retrigger'), 'Retrigger'],
+    ['1', T('nice'), 'NICE banner'], ['2', T('big'), 'BIG banner'], ['3', T('mega'), 'MEGA banner'], ['6', T('superb'), 'SUPERB banner'],
+    ['A', T('tease'), '2 Scatters tease'], ['X', T('small'), 'Line win'], ['M', T('multi'), 'Several lines'],
+    ['W', T('wildwin'), 'Scatter as Wild'], ['N', T('nowin'), 'No win']
   ];
   const KEYMAP = Object.fromEntries(HOTKEYS.map(([k, t]) => [k.toLowerCase(), t]));
   const label = t => (typeof t === 'string' ? (OUT[t] || { label: t }).label : root.Director.describe(t, Game.C));
@@ -58,11 +62,11 @@
   }
   // symbol win: the chosen symbol, len in a row (3-5), on the middle payline
   const symWin = (sym, len) => ({ type: 'symwin', sym: Number(sym), len: Number(len) });
-  const symbolOptions = () => Object.entries(Game.C.symbolNames).filter(([k]) => k >= 0 && k <= 6).sort((a, b) => a[0] - b[0])
+  const symbolOptions = () => Object.entries(Game.C.symbolNames).filter(([k]) => k >= 0 && k <= 10).sort((a, b) => a[0] - b[0])
     .map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
   function playScenario(id, opts = {}) {
     const sc = SCENARIOS.find(s => s.id === id); if (!sc) { note(`Unknown scenario: ${String(id).slice(0, 40)}`); return false; }
-    G.queue = sc.items.map(type => ({ type, cheat: true }));
+    G.queue = sc.items.map(it => Object.assign({ cheat: true }, it));
     G.onChange();
     note(`Scenario: ${sc.label}`);
     if (opts.load) return true;
@@ -93,12 +97,12 @@
       <section><h4>Symbol win</h4>
         <div class="symrow">
           <select class="sym" aria-label="Symbol">${symbolOptions()}</select>
-          <select class="len" aria-label="In a row"><option value="3">3 in a row</option><option value="4">4 in a row</option><option value="5">5 in a row</option></select>
+          <select class="len" aria-label="In a row"><option value="2">2 in a row (premiums)</option><option value="3" selected>3 in a row</option><option value="4">4 in a row</option><option value="5">5 in a row</option></select>
           <button class="sw-force">Force next spin</button><button class="play sw-now">Play now</button>
         </div></section>
       <section><h4>Force the next spin</h4><div class="keys"></div></section>
       <footer><span class="pending"></span><button class="clear">Clear forced (0)</button></footer>
-      <p class="fine">* Presentation cheat: a real big-win board with an amount in that banner's range. A single spin can't reach these tiers under the rules.</p>`;
+      <p class="fine">Every cheat is a real board from the maths engine. Expand and retrigger cheats only act inside free spins.</p>`;
     menu.querySelector('.x').onclick = () => toggle(false);
     menu.querySelector('.clear').onclick = clearForced;
     const pick = () => symWin(menu.querySelector('.sym').value, menu.querySelector('.len').value);

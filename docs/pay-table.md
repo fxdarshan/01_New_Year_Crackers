@@ -1,98 +1,44 @@
-# Babushkas — Pay Table & Pay Lines
+# New Year Crackers: Pay Table
 
-> **Note:** Payout values are shown in € and are relative to the current bet.
+Pays are multiples of the **total bet** for one line (the reference game's unit). At the default $9.00 bet, 1× = $9.00.
 
-## 1. Symbol Payout Table
+## 1. Symbols
 
-The standard payout symbols are ordered from highest to lowest value as follows:
+| Id | Symbol | Plays the part of | 2 | 3 | 4 | 5 | Source |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | Fortune Pig | John Hunter | 1 | 10 | 100 | 500 | reference |
+| 1 | Lion Dance | Tutankhamun mask | 0.5 | 4 | 40 | 200 | reference |
+| 2 | Drum | Cat | 0.5 | 3 | 10 | 75 | reference |
+| 3 | Red Lantern | Scarab | 0.5 | 3 | 10 | 75 | reference |
+| 4 | Gold Ingot | (extra) | | 1 | 5 | 25 | ASSUMED |
+| 5 | Lucky Coins | (extra) | | 1 | 5 | 25 | ASSUMED |
+| 6 | A | A | | 0.5 | 4 | 15 | reference |
+| 7 | K | K | | 0.5 | 4 | 15 | reference |
+| 8 | Q | Q | | 0.5 | 2.5 | 10 | reference |
+| 9 | J | J | | 0.5 | 2.5 | 10 | reference |
+| 10 | 10 | 10 | | 0.5 | 2.5 | 10 | reference |
+| 11 | Firecracker Scatter | Book of Tut | | 2 | 20 | 200 | reference, scatter pay anywhere |
 
-| Rank / Tier | Visual Description | Color | 5 of a Kind | 4 of a Kind | 3 of a Kind |
-| :---: | :--- | :---: | :---: | :---: | :---: |
-| **0** | Highest Value Symbol (Grandmother with Heart) | Yellow | €15.00 | €7.50 | €3.75 |
-| **1** | High Value Symbol (Babushka with Glasses) | Orange | €11.25 | €6.00 | €3.00 |
-| **2** | Mid-High Value Symbol (Red Babushka) | Red | €7.50 | €4.50 | €2.25 |
-| **3** | Mid Value Symbol (Pink Babushka) | Pink | €6.00 | €3.00 | €1.50 |
-| **4** | Mid-Low Value Symbol (Purple Babushka) | Dark Purple | €5.25 | €3.00 | €1.50 |
-| **5** | Low Value Symbol (Blue Babushka) | Light Blue | €3.75 | €1.50 | €0.75 |
-| **6** | Lowest Value Symbol (Teal Babushka with Pacifier) | Teal | €3.00 | €1.50 | €0.75 |
+Gold Ingot and Lucky Coins are extra symbols from the supplied art. The reference game has no equivalent, so their pays sit between the royals and the premiums. Removing them, or changing their pays, needs a re-tune with `tools/simulate.js`.
 
----
+## 2. Expanded special symbol (free spins)
+The pay for the number of reels holding the special symbol × 10 lines. For example, the Fortune Pig on 5 reels pays 500 × 10 = 5,000×, and the Drum on 3 reels pays 3 × 10 = 30×.
 
-## 2. Wild Symbol Rules
+## 3. Paylines (ASSUMED: the classic 10-line book-slot layout)
+Rows: T top, M middle, B bottom.
 
-* **Reel Position:** Appears exclusively on **Reel 3** (middle reel).
-* **Substitution:** Substitutes for all standard payout symbols to create or extend winning combinations.
-
----
-
-## 3. Wild Mystery Features
-
-When a Wild symbol displays a **star** upon landing, it opens to reveal one of three Mystery Features:
-
-### 3.1 Scare Bear
-* **Effect:** Upgrades the lowest valued symbols on screen in sequence **1, 2, or 3 times**.
-* **Modifier Scale:** Determined by the size of the bear (Small = 1 upgrade, Medium = 2 upgrades, Large = 3 upgrades).
-
-### 3.2 Charm Bear
-* **Effect:** Upgrades **all symbols** currently on screen by 1 level.
-
-### 3.3 Dance Bear
-* **Effect:** Awards **7 Free Spins**.
-* **Guaranteed Wild:** A new Wild egg appears on **Reel 3** on every free spin.
-
----
-
-## 4. Winning Symbol Upgrade
-
-* All winning symbols of the same value upgrade to the next higher-valued symbol whenever the upgrade creates **new** or **longer** winning paylines.
-
----
-
-## 5. Wipe Feature & Special Award
-
-### 5.1 Wipe Feature
-* **Trigger Condition:** Occurs when all 15 reel positions contain symbols of the exact same value after all winning symbol upgrades are completed.
-* **Effect:** All 15 symbols upgrade **one additional time** (e.g., 15 of Symbol 3 upgrade to 15 of Symbol 2).
-
-### 5.2 Special Award (Ghost Symbol)
-* **Trigger Condition:** Occurs when the Wipe Feature applies to 15 of Symbol **(0)** [Yellow Babushka].
-* **Effect:** Symbol (0) upgrades to the **Ghost Symbol**.
-* **Payout:** Awards a fixed grand payout of **€750.00**.
-
----
-
-## 6. Pay Lines (17 Fixed Lines)
-
-Grid coordinates use row positions across Reels 1 through 5: **Top (T)**, **Middle (M)**, and **Bottom (B)**.
-
-| Pay Line # | Pattern (Reels 1 – 5) | Description |
-| :---: | :---: | :--- |
-| **1** | M – M – M – M – M | Full Middle Row |
-| **2** | T – T – T – T – T | Full Top Row |
-| **3** | B – B – B – B – B | Full Bottom Row |
-| **4** | M – M – T – M – M | Center Top Peak |
-| **5** | M – M – B – M – M | Center Bottom Dip |
-| **6** | T – T – M – T – T | Top Row with Center Dip |
-| **7** | B – B – M – B – B | Bottom Row with Center Peak |
-| **8** | T – M – M – M – T | Shallow V-Shape |
-| **9** | B – M – M – M – B | Inverted Shallow V-Shape |
-| **10** | M – B – B – B – M | Middle-to-Bottom Arch |
-| **11** | T – M – T – M – T | High Zig-Zag (Top-Middle) |
-| **12** | M – B – M – B – M | Low Zig-Zag (Middle-Bottom) |
-| **13** | M – T – M – T – M | High Zig-Zag (Middle-Top) |
-| **14** | B – M – B – M – B | Low Zig-Zag (Bottom-Middle) |
-| **15** | T – B – T – B – T | Full Screen Wide Waves (Top-Bottom) |
-| **16** | B – T – B – T – B | Full Screen Wide Waves (Bottom-Top) |
-| **17** | M – T – B – T – M | Middle-Top-Bottom-Top-Middle Diamond Pattern |
----
+| Line | Reels 1-5 |
+| --- | --- |
+| 1 | M M M M M |
+| 2 | T T T T T |
+| 3 | B B B B B |
+| 4 | T M B M T |
+| 5 | B M T M B |
+| 6 | M B B B M |
+| 7 | M T T T M |
+| 8 | B B M T T |
+| 9 | T T M B B |
+| 10 | B M M M T |
 
 ## Prototype implementation status
-
-> This section was added for the prototype. Everything above is the official pay table, unchanged.
-
-- **Pays** are stored as multiples of the total bet in `src/config.js` (`paytable`). The euro values above are quoted at a **€7.50 bet**, which the €750 special award = 100× confirms. Each multiplier is the euro value divided by 7.5, for example Yellow 5-of-a-kind €15.00 → 2.00×.
-- **Symbol IDs** follow the asset spec: rank 0 Yellow = `sym_00` … rank 6 Teal = `sym_06`.
-- **Paylines** 1–17 are in `CONFIG.paylines` in the same order and shapes as section 6.
-- **Scare Bear size** (small, medium, large = 1, 2, 3 upgrades) uses `sym_bear_scare_small/med/large`. The size weights are prototype tuning (`CONFIG.scareSizes`).
-- **Special award** = `CONFIG.specialWin` (100× bet), shown with the EPIC banner.
-- The in-game paytable (the **i** button) shows these pays at the current bet.
+- All values are in `src/config.js` (`paytable`, `scatterPays`, `paylines`) and shown in game on the paytable screen (i button), converted to money at the current bet.

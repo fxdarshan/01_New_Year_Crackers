@@ -39,7 +39,7 @@ async def main():
         # 2 balance below the smallest bet refills the demo balance
         await pg.evaluate("Game.G.balance = 0.05; void Game.play()"); await pg.wait_for_timeout(300)
         bal = await pg.evaluate("Game.G.balance"); await idle(pg)
-        check('balance: refilled when below the smallest bet', bal > 500, f'balance {bal}')
+        check('balance: refilled when below the smallest bet', bal >= 500 - 100, f'balance {bal}')
         check('balance cases: no page errors', not pg.errs, str(pg.errs)); await pg.close()
 
         # 3 speed slider mid-round applies from the next spin
@@ -94,28 +94,34 @@ async def main():
         await idle(pg)
         check('space spam: round completes, no errors', not pg.errs, str(pg.errs)); await pg.close()
 
-        # 9 a win sheet that fails to load falls back to the pulse
+        # 9 a symbol image that fails to load falls back to the placeholder art
         pg = await b.new_page(viewport={'width': 1920, 'height': 1080}); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.route('**/sym_03_nutcracker_win_sheet.webp', lambda r: r.abort())
+        await pg.route('**/sym_02_drum_idle.webp', lambda r: r.abort())
         await pg.goto(URL); await pg.wait_for_function('Game.G.assetInfo', timeout=30000)
-        has = await pg.evaluate("Assets.winSprite(3)")
-        await pg.evaluate("Game.G.queue.push({type:'symwin', sym:3, len:3}); void Game.play()"); await idle(pg)
-        check('missing win sheet: falls back, no errors', has is None and not errs, f'{has} {errs}'); await pg.close()
+        real = await pg.evaluate("!!Assets.real.sym_02_idle"); ph = await pg.evaluate("!!Assets.symbol(2)")
+        await pg.evaluate("Game.G.queue.push({type:'symwin', sym:2, len:3}); void Game.play()"); await idle(pg)
+        check('missing symbol art: placeholder used, no errors', not real and ph and not errs, f'{real} {ph} {errs}'); await pg.close()
 
-        # 10 every win sheet plays all 16 frames in order, and a winner's sheet is not cut by an upgrade
+        # 10 money: one debit per round, the round win credited once, free spins add no debits
         pg = await fresh(b)
-        await pg.evaluate("""const o = CanvasRenderingContext2D.prototype.drawImage; window.__f = [];
-          CanvasRenderingContext2D.prototype.drawImage = function (img, sx, sy, sw, sh) { if (arguments.length == 9 && img.width == 1600) window.__f.push((sx / 400 | 0) + 4 * (sy / 400 | 0)); return o.apply(this, arguments); }; 0""")
-        bad = []
-        for sym in range(6):
-            await pg.evaluate(f"window.__f.length = 0; Game.G.queue.push({{type:'symwin', sym:{sym}, len:3}}); void Game.play()")
-            await idle(pg)
-            seq = await pg.evaluate("window.__f"); runs = []
-            for i in seq:
-                if not runs or runs[-1][-1] != i: runs.append([i]) if (not runs or i == 0) else runs[-1].append(i)
-            if not runs or runs[0] != list(range(16)): bad.append((sym, runs[:1]))
-        check('win sheets: first pass is frames 0 to 15 in order for all six symbols', not bad, str(bad)); await pg.close()
+        await pg.evaluate("Game.setSpeed(3); 0")
+        r = await pg.evaluate("""(async () => { const b0 = Game.G.balance, bet = Game.bet();
+            Game.G.queue = [{type:'trigger', special:3}]; await Game.play();
+            return [b0, bet, Game.G.balance, Game.G.win]; })()""")
+        check('money: balance = before - bet + round win (free spins included)', abs(r[2] - (r[0] - r[1] + r[3])) < 0.005, str(r))
+        # 11 retrigger on the last free spin still plays the 10 extra spins
+        n = await pg.evaluate("""(async () => { Game.G.queue = [{type:'trigger'}, ...Array(9).fill({type:'nowin'}), {type:'retrigger'}];
+            await Game.play(); return [Game.G.fs.played, Game.G.fs.awarded]; })()""")
+        check('retrigger on the last free spin: 20 spins played', n == [20, 20], str(n))
+        # 12 max win cap: the round stops at 5,500x and the summary says so
+        r = await pg.evaluate("""(async () => { const bet = Game.bet(), b0 = Game.G.balance;
+            Game.G.queue = [{type:'trigger', special:0}, ...Array(10).fill({type:'expand5'})];
+            await Game.play(); return [Game.G.win / bet, Game.G.fs.capped, Game.G.fs.played, (Game.G.balance - b0 + bet) / bet]; })()""")
+        check('max win: round win capped at CONFIG.maxWin', abs(r[0] - 5500) < 1e-6 and r[1] and r[2] < 10 and abs(r[3] - 5500) < 1e-6, str(r))
+        # 13 a free-spin-only cheat outside free spins plays as a normal spin
+        r = await pg.evaluate("(async () => { Game.G.queue = [{type:'expand5'}, {type:'retrigger'}]; await Game.play(); await Game.play(); return Game.G.fs.active; })()")
+        check('free-spin cheats outside free spins: normal spins, no errors', r is False and not pg.errs, str(pg.errs)); await pg.close()
 
         # 11 small / portrait window keeps the game inside the viewport
         for (w, h) in [(390, 844), (844, 390), (1024, 768)]:

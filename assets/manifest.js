@@ -1,108 +1,60 @@
 /*
  * ASSET MANIFEST
  * ---------------------------------------------------------------------------
- * Keys are the asset IDs from docs/game-asset-specification.md
- * ([type]_[category]_[asset_name]_[state]). To replace placeholder art or
- * sound, save a file at the listed path (or change the path) and reload.
- * Missing files keep the built-in placeholder, so assets can be swapped one by one.
+ * Keys are the asset IDs listed in docs/game-asset-specification.md. To replace art
+ * or sound, save a file at the listed path (or change the path) and reload. Missing
+ * files keep the built-in placeholder, so assets can be swapped one by one.
  *
- * Sizes (PNG with transparency unless noted):
- *   sym_*  .................................. 300 x 300, centred, same framing for every symbol
- *   bg_*_main ............................... 1920 x 1080 (no transparency needed)
- *   bg_*_frame .............................. 1920 x 1080 overlay, transparent where the reels show
- *   bg_base_reel_strip ...................... one reel column, about 270 x 810 (stretched to the column)
- *   btn_* ................................... about 160 x 160 (spin), 80 x 80 (others)
- *   ui_bar_bottom ........................... 1920 x 110
- *   ui_splash_logo .......................... transparent logo, about 900 x 700 (fitted on the splash screen)
- *   modal_freespins_* ....................... up to about 1200 x 900 panel (fitted on screen); text is drawn on top
- *   banner_win_* ............................ up to about 1000 x 900 title art (fitted on screen); the amount is drawn below it
- * The symbol upgrade animation splits each doll at symbolSplitY (fraction of height)
- * into a lid and a base; keep the doll's seam near that line or change the value.
+ * Source art: the files Darshan supplied in 01_New_Year_Crackers/assets/images
+ * (2026-11-15), prepared with tools/asset-pipeline/prep_new_year_crackers.py
+ * (backgrounds cleaned of the mockup's baked-in symbols, symbols trimmed and resized).
+ *
+ * Sizes:
+ *   bg_*_main ........ 1920 x 1080 JPG; the reel window is x 215-1703, y 139-916
+ *   sym_*_idle ....... about 600 px wide, transparent, trimmed to the art; fitted into a
+ *                      298 x 259 cell using the box in `fit` below (fractions of the cell)
+ *   sym_00_expanded .. full-reel Fortune Pig for the expanding symbol (drawn over a sky panel)
+ *   fx_scatter_full .. full-reel Scatter with its firecracker string (the free spins fuse)
+ *   fx_lantern ....... hanging lantern for the anticipation and modals
  *
  * Sounds: MP3 or WAV. They only load when the game is served over http(s) (README: "Run it").
- * Spine 2D skeletons listed in the asset spec are not wired in yet; see README "Next steps".
+ * Without files, synthesised placeholder sounds play.
  */
 window.ASSET_MANIFEST = {
-  symbolSplitY: 0.47,
-
-  // Sprite sheets that replace a symbol's win pulse (sym_xx_win). Frames run left to right, top to bottom.
-  //   tpf: ticks (1/30 s) each frame is held, whole ticks so every frame lasts the same time (16 x 3 = 48 ticks = 1.6 s, 100 ms a frame).
-  //   loops: alternative to tpf: how many times the whole sheet plays during the symbol win window (CONFIG.frames.symWin, 45 ticks = 1.5 s).
-  //   holds: alternative to tpf: ticks (1/30 s) each frame stays on screen; the sum is stretched over the win window
-  //   scale: drawn size of one frame as a multiple of the symbol size (makes the body match the idle art)
-  //   ox, oy: offset from the symbol centre, as a fraction of the symbol size (lines up the body with the idle art)
-  // tools/asset-pipeline/cut_sprite_sheet.py prints scale, ox and oy when run with --idle.
-  sprites: {
-    sym_00_win: { cols: 4, rows: 4, tpf: 3, scale: 1.2145, ox: 0.003, oy: -0.0622 },
-    sym_01_win: { cols: 4, rows: 4, tpf: 3, scale: 1.0395, ox: 0.0078, oy: -0.0312 },
-    sym_02_win: { cols: 4, rows: 4, tpf: 3, scale: 1.0484, ox: 0.001, oy: -0.0616 },
-    sym_03_win: { cols: 4, rows: 4, tpf: 3, scale: 1.011, ox: -0.0025, oy: -0.0329 },
-    sym_04_win: { cols: 4, rows: 4, tpf: 3, scale: 1.0395, ox: 0.0, oy: -0.0234 },
-    sym_05_win: { cols: 4, rows: 4, tpf: 3, scale: 1.0888, ox: 0.0, oy: -0.0408 },
+  // fitting box per symbol, [width, height] as a fraction of the cell; tiles may overflow a little, as in the mockup
+  fit: {
+    default:          [0.98, 1.06],
+    sym_00_idle:      [0.97, 1.00],
+    sym_01_idle:      [1.00, 1.10],
+    sym_scatter_idle: [1.00, 1.08],
+    sym_06_idle: [0.80, 0.86], sym_07_idle: [0.80, 0.86], sym_08_idle: [0.80, 0.86], sym_09_idle: [0.80, 0.86], sym_10_idle: [0.86, 0.80]
   },
 
   images: {
-    // 2.1 environment
-    bg_base_main:        'assets/images/environment/bg_base_main.jpg',        // snowy cabins under the northern lights
-    bg_base_frame:       'assets/images/environment/bg_base_frame.png',
-    bg_base_reel_strip:  'assets/images/environment/bg_base_reel_strip.png',
-    // 3.1 free game environment
-    bg_freegame_main:    'assets/images/environment/bg_freegame_main.jpg',    // cosy firelit living room
-    bg_freegame_frame:   'assets/images/environment/bg_freegame_frame.png',
-    fx_reel3_guaranteed_wild_indicator: 'assets/images/fx/fx_reel3_guaranteed_wild_indicator.png',
-    vfx_anticipation_reel3: 'assets/images/fx/vfx_anticipation_reel3.webp',   // golden spiral over reel 3 (drawn additive)
+    // environment (the mockups with the reel window cleaned)
+    bg_base_main:      'assets/images/environment/bg_base_main.jpg',
+    bg_freegame_main:  'assets/images/environment/bg_freegame_main.jpg',
 
-    // 2.2 UI / HUD
-    ui_splash_logo:      'assets/images/ui/ui_splash_logo.webp',            // X-Mas Dolls logo for the splash / loading screen
-    ui_bar_bottom:       'assets/images/ui/ui_bar_bottom.png',
-    btn_spin_idle:       'assets/images/ui/btn_spin_idle.png',
-    btn_spin_active:     'assets/images/ui/btn_spin_active.png',
-    btn_spin_disabled:   'assets/images/ui/btn_spin_disabled.png',
-    btn_auto_idle:       'assets/images/ui/btn_auto_idle.png',
-    btn_auto_active:     'assets/images/ui/btn_auto_active.png',
-    btn_bet_plus:        'assets/images/ui/btn_bet_plus.png',
-    btn_bet_minus:       'assets/images/ui/btn_bet_minus.png',
-    btn_info:            'assets/images/ui/btn_info.png',
-    ui_freegame_counter: 'assets/images/ui/ui_freegame_counter.png',
+    // symbols, highest paying first
+    sym_00_idle:       'assets/images/symbols/sym_00_pig_idle.webp',       // Fortune Pig (framed, head and shoulders)
+    sym_00_expanded:   'assets/images/symbols/sym_00_pig_expanded.webp',   // Fortune Pig on a cloud, full reel
+    sym_01_idle:       'assets/images/symbols/sym_01_lion_idle.webp',      // Lion Dance
+    sym_02_idle:       'assets/images/symbols/sym_02_drum_idle.webp',      // Drum
+    sym_03_idle:       'assets/images/symbols/sym_03_lantern_idle.webp',   // Red Lantern
+    sym_04_idle:       'assets/images/symbols/sym_04_ingot_idle.webp',     // Gold Ingot
+    sym_05_idle:       'assets/images/symbols/sym_05_coins_idle.webp',     // Lucky Coins
+    sym_06_idle:       'assets/images/symbols/sym_06_a_idle.webp',
+    sym_07_idle:       'assets/images/symbols/sym_07_k_idle.webp',
+    sym_08_idle:       'assets/images/symbols/sym_08_q_idle.webp',
+    sym_09_idle:       'assets/images/symbols/sym_09_j_idle.webp',
+    sym_10_idle:       'assets/images/symbols/sym_10_ten_idle.webp',
+    sym_scatter_idle:  'assets/images/symbols/sym_scatter_idle.webp',      // Firecracker Scatter (Wild + Scatter)
 
-    // 4.1 standard symbols (idle frames)
-    // Holiday art set (2026-11-13). Tier order = pay value, 0 highest.
-    sym_00_idle: 'assets/images/symbols/sym_00_santa_idle.png',         // Tier 0 Santa (highest)
-    sym_01_idle: 'assets/images/symbols/sym_01_mrs_claus_idle.png',     // Tier 1 Mrs Claus
-    sym_02_idle: 'assets/images/symbols/sym_02_elf_idle.png',           // Tier 2 Elf
-    sym_03_idle: 'assets/images/symbols/sym_03_nutcracker_idle.png',    // Tier 3 Nutcracker
-    sym_04_idle: 'assets/images/symbols/sym_04_snowman_idle.png',       // Tier 4 Snowman
-    sym_05_idle: 'assets/images/symbols/sym_05_gingerbread_idle.png',   // Tier 5 Gingerbread
-    sym_06_idle: 'assets/images/symbols/sym_06_gift_idle.png',          // Tier 6 Gift egg (lowest)
-
-    // 4.2 special and mystery symbols
-    sym_wild_idle:        'assets/images/symbols/sym_wild_idle.png',        // star snow-globe matryoshka
-    sym_wild_star_idle:   'assets/images/symbols/sym_wild_star_idle.png',   // same doll with a gold aura (will open)
-    sym_bear_scare_small: 'assets/images/symbols/sym_bear_scare_small.png',  // grumpy 'Frost Frenzy' reindeer, 3 sizes
-    sym_bear_scare_med:   'assets/images/symbols/sym_bear_scare_med.png',
-    sym_bear_scare_large: 'assets/images/symbols/sym_bear_scare_large.png',
-    sym_bear_charm:       'assets/images/symbols/sym_bear_charm.png',       // elegant reindeer with glowing antlers
-    sym_bear_dance:       'assets/images/symbols/sym_bear_dance.png',       // joyful jingle-bell reindeer
-    sym_ghost_idle:       'assets/images/symbols/sym_ghost_idle.png',
-    sym_00_win:           'assets/images/symbols/sym_00_santa_win_sheet.webp',   // Santa win animation: 4 x 4 sprite sheet, see sprites below
-    sym_01_win:           'assets/images/symbols/sym_01_mrs_claus_win_sheet.webp', // Mrs Claus win animation: 4 x 4 sprite sheet
-    sym_02_win:           'assets/images/symbols/sym_02_elf_win_sheet.webp',         // Elf
-    sym_03_win:           'assets/images/symbols/sym_03_nutcracker_win_sheet.webp',  // Nutcracker
-    sym_04_win:           'assets/images/symbols/sym_04_snowman_win_sheet.webp',     // Snowman
-    sym_05_win:           'assets/images/symbols/sym_05_gingerbread_win_sheet.webp', // Gingerbread
-
-    // 7 banners and modals (panel / title art; text and amounts are drawn on top)
-    modal_freespins_intro:   'assets/images/banners/modal_freespins_intro.webp',   // 'Festive Win!' frame; text drawn in the centre
-    modal_freespins_outro:   'assets/images/banners/modal_freespins_outro.webp',   // 'Total Win!' wooden sign; amount drawn on the board
-    banner_win_nice:         'assets/images/banners/banner_win_nice.webp',          // 'Nice List!' wreath
-    banner_win_big:          'assets/images/banners/banner_win_big.png',
-    banner_win_mega:         'assets/images/banners/banner_win_mega.webp',          // 'Merry Mega!' golden star
-    banner_win_superb:       'assets/images/banners/banner_win_superb.webp',        // 'Superb Sleigh Ride!' bells
-    banner_win_sensational:  'assets/images/banners/banner_win_sensational.webp',   // 'Sensational Snowfall!' ice
-    banner_win_epic:         'assets/images/banners/banner_win_epic.webp',          // 'Epic Christmas!' sleigh (also the Ghost award)
-
-    // 8 pay line visualisation (line_overlay_01..17 are drawn as paths in code)
-    line_node_highlight:     'assets/images/fx/line_node_highlight.png'
+    // effects
+    fx_scatter_full:   'assets/images/fx/fx_scatter_full.webp',            // Scatter with the firecracker string, full reel
+    fx_lantern:        'assets/images/fx/fx_lantern.webp'
+    // optional, not supplied yet (code-drawn when absent): banner_win_nice / _big / _mega / _superb /
+    // _sensational / _epic (title art above the amount) and ui_splash_logo (splash screen logo)
   },
 
   sounds: {
@@ -115,15 +67,17 @@ window.ASSET_MANIFEST = {
     sfx_reel_stop_03:       'assets/audio/sfx_reel_stop_03.mp3',
     sfx_reel_stop_04:       'assets/audio/sfx_reel_stop_04.mp3',
     sfx_reel_stop_05:       'assets/audio/sfx_reel_stop_05.mp3',
-    sfx_anticipation_reel3: 'assets/audio/sfx_anticipation_reel3.mp3',
+    sfx_scatter_land:       'assets/audio/sfx_scatter_land.mp3',
+    sfx_scatter_win:        'assets/audio/sfx_scatter_win.mp3',
+    sfx_fuse:               'assets/audio/sfx_fuse.mp3',
+    sfx_cracker_pop:        'assets/audio/sfx_cracker_pop.mp3',
+    sfx_pick_tick:          'assets/audio/sfx_pick_tick.mp3',
+    sfx_pick_stop:          'assets/audio/sfx_pick_stop.mp3',
+    sfx_expand_flash:       'assets/audio/sfx_expand_flash.mp3',
+    sfx_expand:             'assets/audio/sfx_expand.mp3',
     sfx_symbol_win_line:    'assets/audio/sfx_symbol_win_line.mp3',
-    sfx_symbol_upgrade:     'assets/audio/sfx_symbol_upgrade.mp3',
-    sfx_scare_bear_roar:    'assets/audio/sfx_scare_bear_roar.mp3',
-    sfx_charm_bear_magic:   'assets/audio/sfx_charm_bear_magic.mp3',
-    sfx_dance_bear_jig:     'assets/audio/sfx_dance_bear_jig.mp3',
-    sfx_wipe_win_fanfare:   'assets/audio/sfx_wipe_win_fanfare.mp3',
-    sfx_ghost_jackpot:      'assets/audio/sfx_ghost_jackpot.mp3',
     sfx_countup_loop:       'assets/audio/sfx_countup_loop.mp3',
-    sfx_countup_end:        'assets/audio/sfx_countup_end.mp3'
+    sfx_countup_end:        'assets/audio/sfx_countup_end.mp3',
+    banner_hit:             'assets/audio/banner_hit.mp3'
   }
 };

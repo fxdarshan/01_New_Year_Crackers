@@ -1,24 +1,25 @@
 /*
- * Game engine: pure maths, no drawing. Follows docs/official-game-rules.md.
+ * Game engine: pure maths, no drawing. Follows docs/official-game-rules.md
+ * (the features and maths of "John Hunter and the Book of Tut", see docs/reference-game.md).
  *
- * resolveSpin(grid) takes the stopped reels and returns a list of steps:
- *   hatch  a landed Wild shows a star and opens to a bear
- *   bear   the bear's effect (Scare: lowest symbols upgrade 1-3 times, Charm: all
- *          symbols upgrade once, Dance: free spins)
- *   win    new or improved payline wins (only the highest win per line is paid)
- *   pop    winning symbols of one value upgrade, when that creates new or longer lines
- *   wipe   all 15 symbols the same: they upgrade once more (Yellow -> Ghost = special win)
+ * resolveSpin(grid, opts) takes the stopped reels and returns a list of steps:
+ *   win      line wins, left to right on adjacent reels; the Scatter substitutes as a Wild.
+ *            Only the highest win per line is paid.
+ *   scatter  3+ Scatters anywhere pay 2x / 20x / 200x total bet and award (or add) 10 free spins
+ *   expand   free spins only: the special symbol is on enough reels to win, expands to fill
+ *            those reels and pays on all 10 lines, adjacent or not (paid on top of the line wins)
  * The renderer plays these steps in order, so what you see is what the maths decided.
  *
- * Grid format: grid[reel][row] = symbol id (0..6 doll tier, 0 = Yellow highest; 9 Wild; 8 Ghost).
+ * Grid format: grid[reel][row] = symbol id (0..10 regular, 0 highest; 11 Scatter).
  * Works in the browser (window.Engine) and in Node (require('./engine')).
  */
 (function (root) {
   function create(CONFIG, rng) {
     rng = rng || Math.random;
-    const C = CONFIG, W = C.WILD, R = C.rows, N = C.reels;
+    const C = CONFIG, S = C.SCATTER, R = C.rows, N = C.reels, NL = C.paylines.length;
     const round2 = v => Math.round(v * 100) / 100;
     const clone = g => g.map(col => col.slice());
+    const minCount = s => Math.min(...Object.keys(C.paytable[s]).map(Number));   // 2 for symbols that pay 2 of a kind
 
     function pickWeighted(table) {
       let total = 0; for (const k in table) total += table[k];
@@ -26,188 +27,124 @@
       for (const k in table) { r -= table[k]; if (r <= 0) return k; }
       return Object.keys(table).pop();
     }
-    function randomSymbol(reel, allowWild = true) {
-      const t = {};
-      for (const k in C.weights) {
-        const id = Number(k);
-        if (id === W && (reel !== C.wildReel || !allowWild)) continue;
-        t[k] = C.weights[k];
+    // cumulative weight tables per reel, base and free spins
+    const tables = {};
+    // free spins: the special symbol's weight is multiplied by CONFIG.specialBoost (TUNED)
+    function table(fs, special) {
+      const key = fs ? 'fs' + (special ?? '') : 'base';
+      if (tables[key]) return tables[key];
+      const w = (fs && C.weightsFreeSpins) || C.weights;
+      return (tables[key] = w.map(row => { let a = 0; return row.map((x, s) => (a += x * (fs && s === special ? C.specialBoost || 1 : 1))); }));
+    }
+    function randomSymbol(reel, o = {}) {
+      const t = table(o.fs, o.special)[reel], total = t[t.length - 1];
+      for (let tries = 0; tries < 50; tries++) {
+        const r = rng() * total;
+        let s = 0; while (t[s] < r) s++;
+        if (o.noScatter && s === S) continue;
+        return s;
       }
-      return Number(pickWeighted(t));
+      return C.regular[C.regular.length - 1];
     }
 
-    /** Random stop. opts.forceWild guarantees a Wild on the wild reel (free spins). */
+    /** Random stop. opts.fs uses the free spins weights (with opts.special boosted); opts.noScatter keeps Scatters off the board. */
     function randomGrid(opts = {}) {
       const g = [];
-      for (let c = 0; c < N; c++) {
-        g.push([]);
-        for (let r = 0; r < R; r++) g[c].push(randomSymbol(c, opts.allowWild !== false));
-      }
-      if (opts.forceWild && !g[C.wildReel].includes(W)) g[C.wildReel][Math.floor(rng() * R)] = W;
+      for (let c = 0; c < N; c++) { g.push([]); for (let r = 0; r < R; r++) g[c].push(randomSymbol(c, opts)); }
       return g;
     }
 
-    /** Evaluate all paylines: highest win per line, left to right, no gaps. */
+    /** Line wins: highest win per line, left to right, adjacent reels; Scatters substitute. */
     function evaluate(grid) {
       const wins = [];
       C.paylines.forEach((line, li) => {
-        let sym = null, count = 0, hasWild = false;
+        let sym = null, count = 0, wilds = 0;
         for (let c = 0; c < N; c++) {
           const s = grid[c][line[c]];
-          if (s === C.GHOST) break;
-          if (s === W) { hasWild = true; count++; continue; }
+          if (s === S) { count++; wilds++; continue; }
           if (sym === null) { sym = s; count++; continue; }
           if (s === sym) { count++; continue; }
           break;
         }
-        if (sym === null || count < 3) return;
-        const pay = C.paytable[sym] && C.paytable[sym][Math.min(count, 5)];
+        if (sym === null) return;                      // a line of Scatters only pays as scatter
+        const pay = C.paytable[sym][Math.min(count, 5)];
         if (!pay) return;
         const positions = [];
         for (let c = 0; c < count; c++) positions.push([c, line[c]]);
-        wins.push({ line: li, sym, count, pay, hasWild, positions });
+        wins.push({ line: li, sym, count, pay, wilds, positions });
       });
       return wins;
     }
 
-    const upgraded = (s, n = 1) => (s === W || s === C.GHOST) ? s : Math.max(0, s - n);
-
-    /** The single symbol filling the board, or null. Wilds count as matching if configured. */
-    function sameSymbol(grid) {
-      let sym = null;
-      for (let c = 0; c < N; c++) for (let r = 0; r < R; r++) {
-        const s = grid[c][r];
-        if (s === W && C.wipeCountsWild) continue;
-        if (sym === null) sym = s; else if (s !== sym) return null;
-      }
-      return sym;
+    function scatters(grid) {
+      const pos = [];
+      for (let c = 0; c < N; c++) for (let r = 0; r < R; r++) if (grid[c][r] === S) pos.push([c, r]);
+      return pos;
     }
 
-    function lowestValue(grid) {           // highest tier number = lowest value
-      let worst = -1;
-      for (let c = 0; c < N; c++) for (let r = 0; r < R; r++) { const s = grid[c][r]; if (s !== W && s !== C.GHOST && s > worst) worst = s; }
-      return worst;
-    }
-
-    function applyBear(grid, bear, size) {
-      if (bear === 'charm') {
-        const changes = [];
-        for (let c = 0; c < N; c++) for (let r = 0; r < R; r++) {
-          const s = grid[c][r], t = upgraded(s);
-          if (t !== s) { changes.push({ c, r, from: s, to: t }); grid[c][r] = t; }
-        }
-        return { bear, changes };
+    /** Free spins: reels holding the special symbol, and the pay if it expands. */
+    function expansion(grid, special) {
+      if (special == null) return null;
+      const reels = [], cells = [];
+      for (let c = 0; c < N; c++) {
+        let has = false;
+        for (let r = 0; r < R; r++) if (grid[c][r] === special) { has = true; cells.push([c, r]); }
+        if (has) reels.push(c);
       }
-      if (bear === 'scare') {
-        // the lowest valued symbols upgrade, repeated 1-3 times (bear size)
-        const rounds = [];
-        for (let i = 0; i < size; i++) {
-          const worst = lowestValue(grid);
-          if (worst <= 0) break;
-          const ch = [];
-          for (let c = 0; c < N; c++) for (let r = 0; r < R; r++) if (grid[c][r] === worst) { ch.push({ c, r, from: worst, to: worst - 1 }); grid[c][r] = worst - 1; }
-          rounds.push(ch);
-        }
-        return { bear, size, rounds, changes: [].concat(...rounds) };
-      }
-      return { bear: 'dance', changes: [], freeSpins: C.freeSpins };
-    }
-
-    /** Does upgrading change the board into one with new or longer paylines? */
-    function newOrLonger(before, after) {
-      const prev = {}; before.forEach(w => { prev[w.line] = w.count; });
-      return after.some(w => !(w.line in prev) || w.count > prev[w.line]);
+      const count = reels.length;
+      if (count < minCount(special)) return null;
+      const pay = C.paytable[special][Math.min(count, 5)];
+      if (!pay) return null;
+      return { sym: special, reels, cells, count, pay, lines: NL, mult: pay * (C.expandPaysAllLines ? NL : 1) };
     }
 
     /**
      * Play out a stopped grid.
      * opts.bet          total bet
      * opts.inFreeSpins
-     * opts.forceBear    'scare' | 'charm' | 'dance' (a landed Wild then always shows a star)
-     * opts.forceStar    true/false to force or block the star
-     * opts.scareSize    1 | 2 | 3
+     * opts.special      the expanding symbol (free spins)
      * Returns { start, end, steps, total (money), freeSpins }
      */
     function resolveSpin(startGrid, opts = {}) {
       const bet = opts.bet || 1, fs = !!opts.inFreeSpins;
       const grid = clone(startGrid), steps = [];
-      const linePaid = {};             // line -> best pay multiplier so far
-      let lineTotal = 0, special = 0, freeSpins = 0;
-      const total = () => round2(lineTotal * bet + special);
+      let mult = 0, freeSpins = 0;
 
-      // 1. a landed Wild may show a star and open to a bear (one per spin)
-      let wildPos = null;
-      for (let r = 0; r < R; r++) if (grid[C.wildReel][r] === W) { wildPos = [C.wildReel, r]; break; }
-      if (wildPos) {
-        const star = opts.forceBear ? true : (opts.forceStar != null ? opts.forceStar : rng() < (fs ? C.starChanceFreeSpins : C.starChance));
-        if (star) {
-          const bear = opts.forceBear || pickWeighted(fs ? C.bearWeightsFreeSpins : C.bearWeights);
-          const size = bear === 'scare' ? (opts.scareSize || Number(pickWeighted(C.scareSizes))) : 2;
-          steps.push({ type: 'hatch', bear, size, pos: wildPos });
-          const eff = applyBear(grid, bear, size);
-          if (eff.freeSpins) freeSpins += eff.freeSpins;
-          steps.push(Object.assign({ type: 'bear' }, eff));
+      // 1. line wins
+      const wins = evaluate(grid).map(w => Object.assign(w, { amount: round2(w.pay * bet) }));
+      if (wins.length) {
+        const m = wins.reduce((a, w) => a + w.pay, 0); mult += m;
+        steps.push({ type: 'win', wins, amount: round2(m * bet) });
+      }
+      // 2. scatters
+      const sc = scatters(grid);
+      if (sc.length >= 3) {
+        const m = C.scatterPays[Math.min(sc.length, 5)] || 0; mult += m;
+        freeSpins = fs ? C.freeSpinsRetrigger : C.freeSpins;
+        steps.push({ type: 'scatter', count: sc.length, positions: sc, amount: round2(m * bet), freeSpins, retrigger: fs });
+      }
+      // 3. expanding special symbol (free spins)
+      if (fs) {
+        const ex = expansion(grid, opts.special);
+        if (ex) {
+          mult += ex.mult;
+          ex.reels.forEach(c => { for (let r = 0; r < R; r++) grid[c][r] = ex.sym; });
+          steps.push(Object.assign({ type: 'expand', amount: round2(ex.mult * bet) }, ex));
         }
       }
-
-      // 2. pay wins, upgrade winning symbols while that makes new or longer lines, then check for a wipe
-      let wiped = false;
-      for (let guard = 0; guard < 60; guard++) {
-        const wins = evaluate(grid);
-        const improved = [];
-        wins.forEach(w => {
-          const prev = linePaid[w.line] || 0;
-          if (w.pay > prev) { improved.push(Object.assign({}, w, { amount: round2((w.pay - prev) * bet) })); lineTotal += w.pay - prev; linePaid[w.line] = w.pay; }
-        });
-        if (improved.length) steps.push({ type: 'win', wins: improved, amount: round2(improved.reduce((a, w) => a + w.amount, 0)), total: total() });
-
-        // which values qualify for an upgrade
-        const byRank = {};
-        wins.forEach(w => w.positions.forEach(([c, r]) => {
-          const s = grid[c][r]; if (s === W || s <= 0) return;
-          (byRank[s] = byRank[s] || new Set()).add(c + ',' + r);
-        }));
-        const pops = [];
-        Object.keys(byRank).forEach(rank => {
-          const test = clone(grid), list = [...byRank[rank]].map(k => k.split(',').map(Number));
-          list.forEach(([c, r]) => { test[c][r] = upgraded(test[c][r]); });
-          if (newOrLonger(wins, evaluate(test))) list.forEach(([c, r]) => pops.push({ c, r, from: grid[c][r], to: upgraded(grid[c][r]) }));
-        });
-        if (pops.length) {
-          pops.forEach(p => { grid[p.c][p.r] = p.to; });
-          steps.push({ type: 'pop', changes: pops });
-          continue;
-        }
-
-        // all win upgrades done: wipe if the whole board is one symbol (once per spin)
-        const same = sameSymbol(grid);
-        if (!wiped && same !== null && same !== C.GHOST) {
-          wiped = true;
-          const changes = [];
-          const to = same === 0 ? C.GHOST : same - 1;
-          for (let c = 0; c < N; c++) for (let r = 0; r < R; r++) if (grid[c][r] !== W) { changes.push({ c, r, from: grid[c][r], to }); grid[c][r] = to; }
-          if (to === C.GHOST) {
-            special = round2(C.specialWin * bet);
-            steps.push({ type: 'wipe', special: true, from: same, changes, amount: special, total: total() });
-            break;
-          }
-          steps.push({ type: 'wipe', special: false, from: same, changes, amount: 0, total: total() });
-          continue;                    // re-evaluate the upgraded board
-        }
-        break;
-      }
-
-      return { start: clone(startGrid), end: grid, steps, total: total(), freeSpins };
+      return { start: clone(startGrid), end: grid, steps, total: round2(mult * bet), mult, freeSpins };
     }
+
+    function pickSpecial() { return Number(pickWeighted(C.specialWeights)); }
 
     /** Index into CONFIG.winTiers for a win, or -1 when it is below the first banner. */
     function tierOf(total, bet) {
       const x = total / bet; let t = -1;
-      C.winTiers.forEach((w, i) => { if (x >= w.min) t = i; });
+      C.winTiers.forEach((w, i) => { if (x >= w.min - 1e-9) t = i; });
       return t;
     }
 
-    return { randomGrid, randomSymbol, evaluate, resolveSpin, sameSymbol, tierOf, clone, pickWeighted };
+    return { randomGrid, randomSymbol, evaluate, scatters, expansion, resolveSpin, pickSpecial, tierOf, clone, pickWeighted, minCount };
   }
 
   const Engine = { create };

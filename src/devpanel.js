@@ -20,13 +20,13 @@
   document.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'd' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) togglePanel($('#app').classList.contains('no-panel')); });
 
   /* ---------- queue ---------- */
-  G.queue = [{ type: 'small' }, { type: 'chain' }, { type: 'scare3' }, { type: 'charm' }, { type: 'nice' }, { type: 'wipe' }, { type: 'dance' }, { type: 'ghost' }];
+  G.queue = [{ type: 'small' }, { type: 'multi' }, { type: 'wildwin' }, { type: 'tease' }, { type: 'big' }, { type: 'trigger', special: 0 }, { type: 'expand' }, { type: 'random' }, { type: 'expand5' }];
   function renderQueue() {
     const q = $('#queue'); q.innerHTML = '';
     if (!G.queue.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'Empty: spins are random.'; q.appendChild(li); }
     G.queue.forEach((it, i) => {
       const o = OUT[it.type] || OUT.random, li = document.createElement('li');
-      li.innerHTML = `<span class="lbl"><span class="dot" style="background:${o.color}"></span>${root.Director.describe(it, C)}${it.bear ? ' · ' + it.bear : ''}</span>`;
+      li.innerHTML = `<span class="lbl"><span class="dot" style="background:${o.color}"></span>${root.Director.describe(it, C)}</span>`;
       const up = document.createElement('button'); up.textContent = '↑'; up.title = 'Move up'; up.disabled = i === 0;
       up.onclick = () => { [G.queue[i - 1], G.queue[i]] = [G.queue[i], G.queue[i - 1]]; renderQueue(); };
       const rm = document.createElement('button'); rm.textContent = '✕'; rm.title = 'Remove';
@@ -35,20 +35,20 @@
     });
   }
   const adds = $('#adds');
-  ['nowin', 'small', 'chain', 'nice', 'big', 'b_mega', 'b_superb', 'b_sensational', 'scare', 'scare2', 'scare3', 'charm', 'dance', 'wipe', 'ghost', 'random'].forEach(k => {
+  ['nowin', 'small', 'multi', 'wildwin', 'tease', 'nice', 'big', 'mega', 'superb', 'trigger', 'trigger4', 'trigger5', 'expand2', 'expand', 'expand5', 'retrigger', 'random'].forEach(k => {
     const b = document.createElement('button'); b.innerHTML = `<span class="dot" style="background:${OUT[k].color}"></span>${OUT[k].label}`;
     b.onclick = () => { G.queue.push({ type: k }); renderQueue(); }; adds.appendChild(b);
   });
   // symbol win: pick a symbol and a line length from the dropdowns, add it to the list
-  $('#swSym').innerHTML = Object.entries(C.symbolNames).filter(([k]) => k >= 0 && k <= 6).sort((a, b) => a[0] - b[0]).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+  $('#swSym').innerHTML = Object.entries(C.symbolNames).filter(([k]) => k >= 0 && k <= 10).sort((a, b) => a[0] - b[0]).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
   $('#swAdd').onclick = () => { G.queue.push({ type: 'symwin', sym: Number($('#swSym').value), len: Number($('#swLen').value) }); renderQueue(); };
   $('#clearQueue').onclick = () => { G.queue = []; renderQueue(); };
   $('#playQueue').onclick = () => { if (G.autoplay) { G.autoplay = false; update(); } else if (!G.busy) root.Game.playQueue(); };
   $('#spin').onclick = () => root.Game.play();
 
   /* ---------- custom grid ---------- */
-  const ED_SYMS = [6, 5, 4, 3, 2, 1, 0, C.WILD];
-  let pick = 3, edGrid = engine.randomGrid({ allowWild: false });
+  const ED_SYMS = [...C.regular, C.SCATTER];
+  let pick = 2, edGrid = engine.randomGrid({ noScatter: true });
   const thumb = id => { const im = A.symbol(id, C); if (!im) return ''; if (im.src) return im.src; const c = document.createElement('canvas'); c.width = c.height = 72; c.getContext('2d').drawImage(im, 0, 0, 72, 72); return c.toDataURL(); };
   const thumbs = {};
   function renderPalette() {
@@ -60,27 +60,26 @@
     const ge = $('#gridEd'); ge.innerHTML = '';
     for (let r = 0; r < C.rows; r++) for (let c = 0; c < C.reels; c++) {
       const s = edGrid[c][r], b = document.createElement('button'); b.title = `Reel ${c + 1}, row ${r + 1}: ${C.symbolNames[s]}`;
-      if (c === C.wildReel) b.className = 'wild-col';
       b.innerHTML = `<img alt="${C.symbolNames[s]}" src="${thumbs[s]}">`;
-      b.onclick = () => { if (pick === C.WILD && c !== C.wildReel) { info('The Wild Egg only lands on reel 3.'); return; } edGrid[c][r] = pick; renderEditor(); };
+      b.onclick = () => { edGrid[c][r] = pick; renderEditor(); };
       ge.appendChild(b);
     }
-    const { bear, scareSize } = edBear();
-    const hasWild = edGrid[C.wildReel].includes(C.WILD);
-    const res = engine.resolveSpin(edGrid, bear && hasWild ? { bet: root.Game.bet(), forceBear: bear, scareSize } : { bet: root.Game.bet(), forceStar: false });
-    const pops = res.steps.filter(s => s.type === 'pop').length, wipe = res.steps.find(s => s.type === 'wipe');
+    const sp = edSpecial(), fs = sp != null;
+    const res = engine.resolveSpin(edGrid, { bet: root.Game.bet(), inFreeSpins: fs, special: sp });
     const parts = [res.total > 0 ? `Pays <b>${C.currency}${res.total.toFixed(2)}</b> (${(res.total / root.Game.bet()).toFixed(1)}× bet)` : 'No win'];
-    if (pops) parts.push(`${pops} upgrade round${pops > 1 ? 's' : ''}`);
-    if (bear && hasWild) parts.push(`Wild opens: <b>${$('#edBear').selectedOptions[0].text}</b>`);
-    else if (bear) parts.push('add a Wild on reel 3 for the bear');
-    if (wipe) parts.push(wipe.special ? '<b>wipe → Ghost special win</b>' : '<b>wipe win</b>');
+    const w = res.steps.find(s => s.type === 'win'), sc = res.steps.find(s => s.type === 'scatter'), ex = res.steps.find(s => s.type === 'expand');
+    if (w) parts.push(`${w.wins.length} line${w.wins.length > 1 ? 's' : ''}`);
+    if (sc) parts.push(`<b>${sc.count} Scatters → ${sc.freeSpins} free spins</b>`);
+    if (ex) parts.push(`<b>${C.symbolNames[ex.sym]} expands on ${ex.count} reels</b>`);
     info(parts.join(' · '));
   }
   const info = h => { $('#edInfo').innerHTML = h; };
-  function edBear() { const v = $('#edBear').value; if (!v) return {}; const [bear, size] = v.split(':'); return { bear, scareSize: size ? Number(size) : undefined }; }
-  $('#edBear').onchange = renderEditor;
-  $('#addCustom').onclick = () => { const b = edBear(); G.queue.push({ type: 'custom', grid: edGrid.map(c => c.slice()), bear: b.bear, scareSize: b.scareSize }); renderQueue(); };
-  $('#copyBoard').onclick = () => { edGrid = G.board.map(c => c.map(s => (s === C.GHOST ? 0 : s))); renderEditor(); };
+  function edSpecial() { const v = $('#edSpecial').value; return v === '' ? null : Number(v); }
+  $('#edSpecial').innerHTML = '<option value="">Base game spin</option>' + C.regular.map(k => `<option value="${k}">Free spin, special: ${C.symbolNames[k]}</option>`).join('');
+  $('#edSpecial').onchange = renderEditor;
+  // a custom free spin plays inside free spins only; outside them the grid plays as a base spin
+  $('#addCustom').onclick = () => { G.queue.push({ type: 'custom', grid: edGrid.map(c => c.slice()) }); renderQueue(); };
+  $('#copyBoard').onclick = () => { edGrid = G.board.map(c => c.slice()); renderEditor(); };
 
   /* ---------- speed ---------- */
   $('#speed').oninput = e => { const v = Number(e.target.value); Game.setSpeed(v); $('#speedOut').textContent = v + '×'; $('#speedOut').title = G.busy ? 'applies from the next spin' : ''; };
@@ -107,7 +106,7 @@
   }
   function stopRec() { if (!rec) return; const r = rec; rec = null; clearInterval(timer); $('#recTime').textContent = ''; r.stop(); update(); }
   function done(blob, ext) {
-    const url = URL.createObjectURL(blob), name = `x-mas-dolls-demo-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.${ext}`;
+    const url = URL.createObjectURL(blob), name = `new-year-crackers-demo-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.${ext}`;
     const out = $('#recOut'); out.innerHTML = '';
     const v = document.createElement('video'); v.src = url; v.controls = true; out.appendChild(v);
     const meta = document.createElement('p'); meta.className = 'hint'; meta.textContent = `${cv.width}×${cv.height} ${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)} MB`; out.appendChild(meta);

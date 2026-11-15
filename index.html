@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>X-Mas Dolls Prototype</title>
+<title>New Year Crackers Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Lilita+One&family=Outfit:wght@500;600;700&family=Pacifico&display=swap" rel="stylesheet">
@@ -40,7 +40,7 @@
         <div class="adds" id="adds"></div>
         <div class="row">
           <label class="f">Symbol win
-            <span class="inline"><select id="swSym" aria-label="Symbol"></select><select id="swLen" aria-label="In a row"><option value="3">3 in a row</option><option value="4">4 in a row</option><option value="5">5 in a row</option></select></span>
+            <span class="inline"><select id="swSym" aria-label="Symbol"></select><select id="swLen" aria-label="In a row"><option value="2">2 in a row</option><option value="3" selected>3 in a row</option><option value="4">4 in a row</option><option value="5">5 in a row</option></select></span>
           </label>
           <button id="swAdd" class="small">Add to list</button>
         </div>
@@ -48,19 +48,12 @@
 
       <section>
         <h2>Custom grid</h2>
-        <p class="hint">Pick a symbol and click cells. The Wild Egg can only sit on reel 3.</p>
+        <p class="hint">Pick a symbol and click cells. The Firecracker Scatter is Wild and Scatter. Choose a special symbol to preview a free spin's expansion; in the list the grid plays as whatever spin it lands on (base or free).</p>
         <div id="palette" class="palette"></div>
         <div id="gridEd" class="grid-ed"></div>
         <div class="row">
-          <label class="f">When the Wild lands
-            <select id="edBear">
-              <option value="">No star (plain Wild)</option>
-              <option value="scare:1">Star → Scare Bear, small (1×)</option>
-              <option value="scare:2">Star → Scare Bear, medium (2×)</option>
-              <option value="scare:3">Star → Scare Bear, large (3×)</option>
-              <option value="charm">Star → Charm Bear</option>
-              <option value="dance">Star → Dance Bear (free spins)</option>
-            </select>
+          <label class="f">Preview as
+            <select id="edSpecial"></select>
           </label>
         </div>
         <p id="edInfo" class="info"></p>

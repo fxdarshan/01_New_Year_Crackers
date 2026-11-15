@@ -1,13 +1,13 @@
 /*
  * Splash / loading screen. A DOM overlay on top of the stage (so it never appears in recordings).
- * Logo: assets/images/ui/ui_splash_logo.webp. Backdrop: the free game background.
+ * Logo: ui_splash_logo when supplied (else the title in text). Backdrop: the base game background.
  * The bar follows real asset loading but never finishes before CONFIG.splash.minMs,
  * so the screen is always readable. Click anywhere to skip once loading is done.
  * Turn it off with CONFIG.splash.enabled = false, or open the page with ?nosplash.
  * "Replay splash screen" in the demo panel runs it again.
  */
 (function (root) {
-  const MSG = ['Loading Festive Wonders...', 'Warming up the Reels...', 'Polishing Golden Bells...', 'Preparing Holiday Magic...'];
+  const MSG = ['Hanging the Lanterns...', 'Warming up the Reels...', 'Polishing the Gold Ingots...', 'Lighting the Firecrackers...'];
   const ICON = {
     star: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z"/></svg>',
     vol: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
@@ -22,19 +22,19 @@
     el = document.createElement('div');
     el.className = 'splash';
     el.setAttribute('aria-label', 'Loading');
-    const bg = manifest.images.bg_freegame_main, logo = manifest.images.ui_splash_logo;
+    const bg = manifest.images.bg_base_main, logo = manifest.images.ui_splash_logo;
     el.innerHTML = `
       <div class="sp-bg"${bg ? ` style="background-image:url('${bg}')"` : ''}></div>
       <div class="sp-shade"></div>
       <canvas class="sp-snow"></canvas>
       <div class="sp-top">
-        <div class="sp-brand">${ICON.star}<span>Holiday Magic</span></div>
+        <div class="sp-brand">${ICON.star}<span>Lucky New Year</span></div>
         <div class="sp-btns"><button class="sp-btn" data-act="vol" aria-label="Toggle sound"></button><button class="sp-btn" data-act="full" aria-label="Fullscreen">${ICON.full}</button></div>
       </div>
       <div class="sp-hero">
         <div class="sp-halo"></div>
         <div class="sp-logo">
-          ${logo ? `<img alt="X-Mas Dolls" src="${logo}">` : `<div class="sp-title">X-Mas Dolls</div>`}
+          ${logo ? `<img alt="New Year Crackers" src="${logo}">` : `<div class="sp-title">New Year Crackers</div>`}
           <div class="sp-floor"></div>
         </div>
       </div>
@@ -96,7 +96,7 @@
     el.querySelector('.sp-fill').style.width = Math.max(pct, 2) + '%';
     el.querySelector('.sp-pct').textContent = pct + '%';
     const i = Math.min(MSG.length - 1, Math.floor(pct / 25)), m = el.querySelector('.sp-msg');
-    const txt = pct >= 100 ? 'Welcome to X-Mas Dolls!' : MSG[i];
+    const txt = pct >= 100 ? 'Welcome to New Year Crackers!' : MSG[i];
     if (m.textContent !== txt) m.textContent = txt;
     if (pct >= 100 && st.real >= 1 && !st.ready) { st.ready = true; st.tReady = t; }
     if (st.ready && t - st.tReady > 450) return leave();
