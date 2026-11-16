@@ -2,6 +2,9 @@
 
 All notable changes to the prototype. Newest first.
 
+## 2026-11-16: bridge between Claude Code and claude.ai chat
+- Added `CLAUDE.md` (house rules), `HANDOFF.md` (where work stands), `WORKFLOW.md` (Claude Code at home, claude.ai chat elsewhere, GitHub as the bridge), the `art/` inbox, `tools/asset-pipeline/import_art.py`, and three project skills from `fxdarshan/slot-starter-template`. No game changes.
+
 ## 2026-11-15: New Year Crackers, first playable build
 - **Game:** rebuilt from the X-Mas Dolls base as **New Year Crackers**, with the features and maths of Pragmatic Play's *John Hunter and the Book of Tut* (Darshan's request): 5×3, 10 lines, Firecracker Scatter as Wild + Scatter (2× / 20× / 200×), 10 free spins with a random special expanding symbol that pays on all lines, unlimited retriggers, 5,500× max win.
 - **Maths:** new `src/engine.js` (line wins with Scatter substitution, scatter pays, expansion) and `src/config.js`. Weights and free spins boost tuned with the new `tools/simulate.js`: RTP 96.35% average over 4 × 4M rounds (reference 96.50%), free spins 1 in 163.

@@ -15,6 +15,8 @@ It is built with the same workflow as the X-Mas Dolls ("Babushka") prototype (ht
 | [`docs/cheats.md`](docs/cheats.md) | Cheat menu, hotkeys, scenarios, links |
 | [`docs/edge-cases.md`](docs/edge-cases.md) | Edge cases and how they're checked |
 
+Working across Claude Code at home and claude.ai chat: [`WORKFLOW.md`](WORKFLOW.md), house rules in [`CLAUDE.md`](CLAUDE.md), current state in [`HANDOFF.md`](HANDOFF.md).
+
 Also: [`assets/README.md`](assets/README.md) (art handoff and pipeline), [`CHANGELOG.md`](CHANGELOG.md), and the project skill [`.claude/skills/slot-math-audit`](.claude/skills/slot-math-audit/SKILL.md) (`/slot-math-audit` in Claude Code: a read-only check of the code against these docs).
 
 ## Play it
